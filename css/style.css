@@ -1,0 +1,86 @@
+body {
+  background: var(--color-bg);
+  color: var(--color-font);
+}
+
+#statusDot {
+  background: var(--color-active);
+}
+
+#statusDot[data-status="offline"] {
+  background: var(--color-error);
+}
+
+input:disabled,
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-rounded);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-bg);
+}
+
+.badge-error {
+  background: var(--color-error);
+}
+
+.badge-warning {
+  background: var(--color-warning);
+}
+
+.badge-info {
+  background: var(--color-info);
+}
+
+div[data-severity="error"] .dot {
+  background: var(--color-error);
+}
+
+div[data-severity="warning"] .dot {
+  background: var(--color-warning);
+}
+
+div[data-severity="info"] .dot {
+  background: var(--color-info);
+}
+
+button,
+.btn,
+input {
+  cursor: pointer;
+  background: var(--color-bg);
+  color: var(--color-font);
+  border: 1px solid var(--color-font);
+  border-radius: var(--radius-slight);
+}
+
+input[type="search"],
+input[type="text"] {
+  cursor: text;
+}
+
+button[aria-pressed="true"] {
+  background: var(--color-active);
+  color: var(--color-bg);
+  border-color: var(--color-active);
+}
+
+.column-visibility-menu ul {
+  background: var(--color-bg);
+  border: 1px solid var(--color-font);
+}
+
+thead {
+  border-bottom: 1px solid var(--color-font);
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--color-font);
+}

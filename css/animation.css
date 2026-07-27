@@ -1,0 +1,26 @@
+button,
+input,
+#statusDot {
+  transition: background-color var(--duration-fast) var(--easing),
+    border-color var(--duration-fast) var(--easing),
+    color var(--duration-fast) var(--easing);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.column-visibility-menu[open] ul {
+  animation: fade-up var(--duration-base) var(--easing);
+}
+
+tbody tr {
+  animation: fade-up var(--duration-slide) var(--easing);
+}

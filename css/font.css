@@ -1,0 +1,35 @@
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+}
+
+h1 {
+  font-family: var(--font-ui);
+  font-size: var(--text-xl);
+}
+
+button,
+.btn,
+input,
+th {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+dt,
+dd {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+th {
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+caption {
+  font-family: var(--font-ui);
+  font-size: var(--text-lg);
+}
