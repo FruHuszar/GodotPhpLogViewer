@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: var(--content-width);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) 0;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+header > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+#statusDot {
+  display: inline-block;
+  width: var(--alert-dot-size);
+  height: var(--alert-dot-size);
+  border-radius: var(--radius-rounded);
+}
+
+dl {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+dl > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+dt .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-rounded);
+}
+
+dd {
+  margin: 0;
+}
+
+.control-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.control-sections section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+search {
+  display: flex;
+}
+
+ul[aria-label="Filter by severity"],
+section[aria-label="Log actions"] ul {
+  display: flex;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+section[aria-label="Log Output"] {
+  padding: var(--space-3) 0;
+}
+
+.column-visibility-menu {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+
+.column-visibility-menu ul {
+  position: absolute;
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  z-index: 1;
+}
+
+.column-visibility-menu li {
+  padding: var(--space-1) 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

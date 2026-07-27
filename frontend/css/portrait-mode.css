@@ -1,0 +1,19 @@
+@media (orientation: portrait) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .control-sections {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  section[aria-label="Log Output"] {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 600px;
+  }
+}
