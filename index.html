@@ -4,6 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Godot Centralized Log Viewer</title>
+    <meta
+      name="description"
+      content="A self-hosted dashboard that mirrors the whole Godot console to a PHP and MySQL backend, so ERROR lines stop getting lost between hundreds of warnings. Filter by severity, search scripts, export CSV, get a sound alert on the error you are hunting."
+    />
+    <meta name="author" content="Fruzsina Anna Huszar" />
+    <meta name="theme-color" content="#171310" />
+    <link rel="canonical" href="https://fruhuszar.github.io/GodotPhpLogViewer/" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Godot Centralized Log Viewer" />
+    <meta
+      property="og:description"
+      content="Mirror the entire Godot console to a web dashboard: severity filters, script search, CSV export and a sound alert for the error you are hunting."
+    />
+    <meta property="og:url" content="https://fruhuszar.github.io/GodotPhpLogViewer/" />
+    <meta
+      property="og:image"
+      content="https://fruhuszar.github.io/GodotPhpLogViewer/favicon.png"
+    />
+    <meta name="twitter:card" content="summary" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Godot Centralized Log Viewer",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Game development tool",
+        "operatingSystem": "Windows, macOS, Linux",
+        "description": "A self-hosted web dashboard that collects the entire Godot engine console over HTTP into a PHP and MySQL backend, then filters, searches, exports and sound-alerts on it.",
+        "url": "https://fruhuszar.github.io/GodotPhpLogViewer/",
+        "codeRepository": "https://github.com/FruHuszar/GodotPhpLogViewer",
+        "programmingLanguage": ["PHP", "JavaScript", "GDScript", "SQL"],
+        "runtimePlatform": ["PHP 8.1", "MySQL", "Godot Engine 4"],
+        "softwareRequirements": "PHP 8.1 with pdo_mysql, MySQL 5.7 or MariaDB 10.4, Godot Engine 4.x",
+        "installUrl": "https://github.com/FruHuszar/GodotPhpLogViewer",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Fruzsina Anna Huszar",
+          "url": "https://github.com/FruHuszar"
+        }
+      }
+    </script>
+
     <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
     <link rel="stylesheet" href="css/index.css" />
     <script type="module" src="js/index.js"></script>
@@ -12,17 +67,13 @@
   <body>
     <main>
       <header>
-        <div>
-          <span
-            id="statusDot"
-            role="status"
-            data-status="online"
-            aria-label="System status: online"
-          ></span>
+        <div class="brand">
+          <span id="statusDot" data-status="listening" aria-hidden="true"></span>
           <h1>Godot Log Viewer</h1>
+          <p id="statusText" role="status">listening</p>
         </div>
 
-        <dl aria-label="Log counts summary">
+        <dl aria-label="Log counts">
           <div data-severity="error">
             <dt><span class="dot" aria-hidden="true"></span>Error</dt>
             <dd id="countError">0</dd>
@@ -38,47 +89,39 @@
         </dl>
       </header>
 
+      <p id="errorBanner" role="alert" hidden></p>
+
       <div class="control-sections">
         <section aria-label="Search and filter">
           <search>
-            <label for="searchInput" class="sr-only"
-              >Search logs or scripts</label
-            >
+            <label for="searchInput" class="sr-only">Search logs</label>
             <input
               type="search"
               id="searchInput"
-              placeholder="Search log messages or .gd paths..."
+              placeholder="Search messages or .gd paths"
             />
           </search>
 
           <ul aria-label="Filter by severity">
             <li>
-              <button type="button" data-filter="ALL" aria-pressed="true">
-                All
-              </button>
+              <button type="button" data-filter="ALL" aria-pressed="true">All</button>
             </li>
             <li>
-              <button type="button" data-filter="ERROR" aria-pressed="false">
-                Error
-              </button>
+              <button type="button" data-filter="ERROR" aria-pressed="false">Error</button>
             </li>
             <li>
-              <button type="button" data-filter="WARNING" aria-pressed="false">
-                Warn
-              </button>
+              <button type="button" data-filter="WARNING" aria-pressed="false">Warning</button>
             </li>
             <li>
-              <button type="button" data-filter="INFO" aria-pressed="false">
-                Info
-              </button>
+              <button type="button" data-filter="INFO" aria-pressed="false">Info</button>
             </li>
           </ul>
         </section>
 
-        <section aria-label="Audio notification settings">
+        <section aria-label="Alert sound">
           <label>
             <input type="checkbox" id="audioToggle" />
-            Alert Sound
+            Alert sound
           </label>
 
           <label for="audioKeyword" class="sr-only">Trigger keyword</label>
@@ -86,6 +129,7 @@
             type="text"
             id="audioKeyword"
             placeholder="Keyword (e.g. asset)"
+            aria-describedby="audioStatus"
             disabled
           />
 
@@ -95,70 +139,64 @@
         <section aria-label="Log actions">
           <ul>
             <li><button type="button" id="btnExport">Export CSV</button></li>
-            <li><button type="button" id="btnClear">Clear All</button></li>
+            <li><button type="button" id="btnDeleteSelected">Delete selected</button></li>
+            <li><button type="button" id="btnClear">Clear all</button></li>
           </ul>
         </section>
       </div>
 
-      <section aria-label="Log Output">
-        <details class="column-visibility-menu">
-          <summary class="btn">Columns</summary>
-          <ul role="group" aria-label="Toggle table columns">
-            <li>
-              <label
-                ><input type="checkbox" data-column="id" checked /> ID</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" data-column="time" checked />
-                Time</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" data-column="type" checked />
-                Type</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" data-column="script-path" checked />
-                Script Path</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" data-column="message" checked />
-                Message</label
-              >
-            </li>
-          </ul>
-        </details>
+      <section aria-label="Log output">
+        <div class="table-tools">
+          <details class="column-visibility-menu">
+            <summary>Show / hide columns</summary>
+            <ul aria-label="Toggle table columns">
+              <li>
+                <label><input type="checkbox" data-column="id" checked /> ID</label>
+              </li>
+              <li>
+                <label><input type="checkbox" data-column="time" checked /> Time</label>
+              </li>
+              <li>
+                <label><input type="checkbox" data-column="type" checked /> Type</label>
+              </li>
+              <li>
+                <label
+                  ><input type="checkbox" data-column="script-path" checked /> Script
+                  path</label
+                >
+              </li>
+              <li>
+                <label
+                  ><input type="checkbox" data-column="message" checked /> Message</label
+                >
+              </li>
+            </ul>
+          </details>
 
-        <table>
-          <caption>
-            Centralized System Logs
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">
-                <input
-                  type="checkbox"
-                  id="selectAllRows"
-                  aria-label="Select all rows"
-                />
-              </th>
-              <th scope="col">ID</th>
-              <th scope="col">Time</th>
-              <th scope="col">Type</th>
-              <th scope="col">Script Path</th>
-              <th scope="col">Message</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody id="logTableBody"></tbody>
-        </table>
+          <p id="audioStatus" role="status">
+            Silent mode: no incoming log makes a sound.
+          </p>
+        </div>
+
+        <div class="table-scroll" role="region" aria-label="Log table" tabindex="0">
+          <table>
+            <caption class="sr-only">Centralized Godot logs, newest first</caption>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <input type="checkbox" id="selectAllRows" aria-label="Select all rows" />
+                </th>
+                <th scope="col" data-col="id">ID</th>
+                <th scope="col" data-col="time">Time</th>
+                <th scope="col" data-col="type">Type</th>
+                <th scope="col" data-col="script-path">Script path</th>
+                <th scope="col" data-col="message">Message</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
       </section>
     </main>
   </body>

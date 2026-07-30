@@ -1,35 +1,53 @@
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
   font-size: var(--text-md);
+  -webkit-font-smoothing: antialiased;
 }
 
 h1 {
-  font-family: var(--font-ui);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
 }
 
 button,
-.btn,
 input,
-th {
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
-}
-
+summary,
+label,
 dt,
 dd {
   font-family: var(--font-ui);
   font-size: var(--text-sm);
+}
+
+button,
+summary {
+  font-weight: var(--weight-strong);
+}
+
+#statusText,
+th,
+dt,
+.badge {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
-th {
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
+dd,
+.badge,
+td[data-col="script-path"] {
+  font-family: var(--font-mono);
 }
 
-caption {
-  font-family: var(--font-ui);
-  font-size: var(--text-lg);
+tbody tr::after {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-tight);
+}
+
+#audioStatus {
+  font-size: var(--text-xs);
 }

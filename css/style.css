@@ -1,64 +1,91 @@
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: var(--color-font);
 }
 
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-font);
+}
+
+.control-sections,
+.column-visibility-menu ul,
+.table-scroll,
+#errorBanner {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-slight);
+  box-shadow: var(--shadow-panel), var(--shadow-inset);
+}
+
+.control-sections section + section {
+  border-left: 1px solid var(--color-line);
+}
+
 #statusDot {
-  background: var(--color-active);
+  background: currentColor;
+  color: var(--color-listening);
+}
+
+#statusDot[data-status="running"] {
+  color: var(--color-running);
 }
 
 #statusDot[data-status="offline"] {
-  background: var(--color-error);
+  color: var(--color-error);
 }
 
-input:disabled,
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+#statusText,
+#audioStatus,
+th,
+dt {
+  color: var(--color-font-muted);
+}
+
+#errorBanner {
+  color: var(--color-error);
+  border-left-color: var(--color-error);
+}
+
+[data-severity="error"] {
+  --color-severity: var(--color-error);
+}
+
+[data-severity="warning"] {
+  --color-severity: var(--color-warning);
+}
+
+[data-severity="info"] {
+  --color-severity: var(--color-info);
 }
 
 .badge {
   display: inline-block;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-rounded);
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-bg);
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border: 1px solid var(--color-severity);
+  border-radius: var(--radius-button);
+  background: color-mix(in srgb, var(--color-severity) 12%, transparent);
+  color: var(--color-severity);
 }
 
-.badge-error {
-  background: var(--color-error);
-}
-
-.badge-warning {
-  background: var(--color-warning);
-}
-
-.badge-info {
-  background: var(--color-info);
-}
-
-div[data-severity="error"] .dot {
-  background: var(--color-error);
-}
-
-div[data-severity="warning"] .dot {
-  background: var(--color-warning);
-}
-
-div[data-severity="info"] .dot {
-  background: var(--color-info);
+dt .dot {
+  background: var(--color-severity);
 }
 
 button,
-.btn,
-input {
-  cursor: pointer;
-  background: var(--color-bg);
+input,
+summary {
+  background: var(--color-surface-strong);
   color: var(--color-font);
-  border: 1px solid var(--color-font);
-  border-radius: var(--radius-slight);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-button);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+summary {
+  width: max-content;
+  list-style: none;
 }
 
 input[type="search"],
@@ -66,21 +93,133 @@ input[type="text"] {
   cursor: text;
 }
 
+input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  padding: 0;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 3px;
+  height: 6px;
+  border: solid var(--color-accent-font);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+
+input[type="checkbox"]:hover:enabled {
+  border-color: var(--color-accent);
+}
+
+@media (forced-colors: active) {
+  input[type="checkbox"] {
+    appearance: auto;
+  }
+}
+
+button:hover:enabled,
+summary:hover {
+  border-color: var(--color-accent);
+}
+
 button[aria-pressed="true"] {
-  background: var(--color-active);
-  color: var(--color-bg);
-  border-color: var(--color-active);
+  background: var(--color-accent);
+  color: var(--color-accent-font);
+  border-color: var(--color-accent);
 }
 
-.column-visibility-menu ul {
+button:disabled,
+input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+thead tr {
   background: var(--color-bg);
-  border: 1px solid var(--color-font);
-}
-
-thead {
-  border-bottom: 1px solid var(--color-font);
+  border-bottom: 1px solid var(--color-line);
 }
 
 tbody tr {
-  border-bottom: 1px solid var(--color-font);
+  border-bottom: 1px solid var(--color-line);
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+
+tbody tr td:first-child::before {
+  content: "";
+  background: var(--color-severity, transparent);
+}
+
+tbody tr td:first-child::after {
+  content: "//";
+  color: var(--color-severity, transparent);
+  opacity: 0;
+}
+
+tbody tr:hover {
+  background: var(--color-surface-strong);
+}
+
+tbody tr:hover td:first-child::after {
+  opacity: 1;
+}
+
+tr.empty td {
+  color: var(--color-font-muted);
+}
+
+td[data-col="script-path"] {
+  color: var(--color-font-muted);
+}
+
+.btn-delete {
+  color: var(--color-font-muted);
+}
+
+.btn-delete:hover:enabled,
+#btnDeleteSelected:hover:enabled,
+#btnClear:hover:enabled {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+#btnExport,
+.modal-action {
+  background: var(--color-accent);
+  color: var(--color-accent-font);
+  border-color: var(--color-accent);
+}
+
+#btnExport:hover:enabled,
+.modal-action:hover:enabled {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.modal {
+  background: var(--color-surface);
+  color: var(--color-font);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-slight);
+  box-shadow: var(--shadow-panel);
+}
+
+.modal::backdrop {
+  background: var(--color-backdrop);
 }

@@ -1,11 +1,15 @@
-const state = {
+import { RUNNING_WINDOW_MS } from "./config.js";
+
+export const state = {
   logs: [],
-  activeFilter: "ALL",
-  searchTerm: "",
+  filter: "ALL",
+  search: "",
   audioEnabled: false,
   audioKeyword: "",
-  lastSeenLogId: null,
-  visibleColumns: {
+  lastSeenId: null,
+  lastArrivalAt: 0,
+  renderedIds: "",
+  columns: {
     id: true,
     time: true,
     type: true,
@@ -14,76 +18,44 @@ const state = {
   },
 };
 
-export function setLogs(newLogs) {
-  state.logs = newLogs;
+export function severity(log) {
+  const type = String(log.log_type || "").toUpperCase();
+  return ["ERROR", "WARNING", "INFO"].includes(type) ? type : "INFO";
 }
 
-export function getLogs() {
-  return state.logs;
+export function filteredLogs() {
+  return state.logs.filter((log) => matchesFilter(log) && matchesSearch(log));
 }
 
-export function setActiveFilter(filter) {
-  state.activeFilter = filter;
+export function counts() {
+  const result = { ERROR: 0, WARNING: 0, INFO: 0 };
+  state.logs.forEach((log) => (result[severity(log)] += 1));
+  return result;
 }
 
-export function getActiveFilter() {
-  return state.activeFilter;
+export function newArrivals(logs) {
+  const known = state.lastSeenId;
+  state.lastSeenId = logs.reduce((max, log) => Math.max(max, Number(log.id) || 0), 0);
+
+  if (known === null) return [];
+
+  const arrivals = logs.filter((log) => Number(log.id) > known);
+  if (arrivals.length) state.lastArrivalAt = Date.now();
+
+  return arrivals;
 }
 
-export function setSearchTerm(term) {
-  state.searchTerm = term.trim().toLowerCase();
+export function connectionStatus() {
+  return Date.now() - state.lastArrivalAt < RUNNING_WINDOW_MS ? "running" : "listening";
 }
 
-export function getSearchTerm() {
-  return state.searchTerm;
+function matchesFilter(log) {
+  return state.filter === "ALL" || severity(log) === state.filter;
 }
 
-export function setAudioEnabled(enabled) {
-  state.audioEnabled = enabled;
-}
+function matchesSearch(log) {
+  if (!state.search) return true;
 
-export function isAudioEnabled() {
-  return state.audioEnabled;
-}
-
-export function setAudioKeyword(keyword) {
-  state.audioKeyword = keyword.trim().toLowerCase();
-}
-
-export function getAudioKeyword() {
-  return state.audioKeyword;
-}
-
-export function getLastSeenLogId() {
-  return state.lastSeenLogId;
-}
-
-export function setLastSeenLogId(id) {
-  state.lastSeenLogId = id;
-}
-
-export function setColumnVisible(columnName, isVisible) {
-  if (columnName in state.visibleColumns) {
-    state.visibleColumns[columnName] = isVisible;
-  }
-}
-
-export function getVisibleColumns() {
-  return state.visibleColumns;
-}
-
-export function getFilteredLogs() {
-  return state.logs.filter((log) => {
-    const matchesFilter =
-      state.activeFilter === "ALL" || log.log_type === state.activeFilter;
-
-    const message = (log.message || "").toLowerCase();
-    const scriptPath = (log.script_path || "").toLowerCase();
-    const matchesSearch =
-      state.searchTerm === "" ||
-      message.includes(state.searchTerm) ||
-      scriptPath.includes(state.searchTerm);
-
-    return matchesFilter && matchesSearch;
-  });
+  const haystack = `${log.message || ""} ${log.script_path || ""}`.toLowerCase();
+  return haystack.includes(state.search);
 }

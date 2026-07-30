@@ -1,19 +1,51 @@
-@media (orientation: portrait) {
-  header {
-    flex-direction: column;
-    align-items: flex-start;
+@media (min-width: 1080px) {
+  .control-sections {
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 
-  .control-sections {
+  .control-sections section {
+    flex: 0 1 auto;
+  }
+
+  .control-sections section[aria-label="Search and filter"] {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 1079px) {
+  .control-sections section + section {
+    border-left: none;
+    border-top: 1px solid var(--color-line);
+  }
+}
+
+@media (max-width: 520px) {
+  body {
+    padding: var(--space-4) 0;
+  }
+
+  .control-sections section {
+    padding: var(--space-3);
+  }
+
+  dl {
+    justify-content: space-between;
+  }
+
+  input[type="search"] {
+    padding: var(--space-1);
+    font-size: var(--text-xs);
+  }
+}
+
+@media (orientation: portrait) {
+  header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  section[aria-label="Log Output"] {
-    overflow-x: auto;
-  }
-
-  table {
-    min-width: 600px;
+  dl {
+    justify-content: space-between;
   }
 }
