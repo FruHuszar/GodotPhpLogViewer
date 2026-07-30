@@ -1,81 +1,37 @@
-import {
-  isAudioEnabled,
-  getAudioKeyword,
-  getLastSeenLogId,
-  setLastSeenLogId,
-} from "../state.js";
+import { state } from "../state.js";
+import { ALERT_SOURCES, ALERT_COOLDOWN_MS } from "../config.js";
 
-let audioCtx = null;
+let alertSound = null;
+let lastPlayedAt = 0;
 
-function getAudioContext() {
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
+export async function loadAlertSound() {
+  if (alertSound) return true;
+
+  for (const source of ALERT_SOURCES) {
+    const response = await fetch(source, { method: "HEAD" }).catch(() => null);
+
+    if (response?.ok) {
+      alertSound = new Audio(source);
+      return true;
     }
   }
-  return audioCtx;
+
+  return false;
 }
 
-export function playAlertSound() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
+export function playAlertFor(arrivals) {
+  if (!state.audioEnabled || !alertSound) return;
+  if (!arrivals.some(shouldAlert)) return;
+  if (Date.now() - lastPlayedAt < ALERT_COOLDOWN_MS) return;
 
-  if (ctx.state === "suspended") {
-    ctx.resume();
-  }
-
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(880, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
-
-  gain.gain.setValueAtTime(0.3, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-
-  osc.start();
-  osc.stop(ctx.currentTime + 0.2);
-}
-
-export function checkAndPlayAudioAlert(logs) {
-  const previousId = getLastSeenLogId();
-  const newest = highestId(logs);
-
-  setLastSeenLogId(newest);
-
-  if (previousId === null || !isAudioEnabled()) {
-    return;
-  }
-
-  const arrivals = logs.filter((log) => Number(log.id) > previousId);
-
-  if (arrivals.length === 0) {
-    return;
-  }
-
-  if (arrivals.some(shouldAlert)) {
-    playAlertSound();
-  }
+  lastPlayedAt = Date.now();
+  alertSound.currentTime = 0;
+  alertSound.play().catch(() => {});
 }
 
 function shouldAlert(log) {
-  const keyword = getAudioKeyword();
+  if (!state.audioKeyword) return true;
 
-  if (!keyword) {
-    return String(log.log_type || "").toUpperCase() === "ERROR";
-  }
-
-  const message = (log.message || "").toLowerCase();
-  const script = (log.script_path || "").toLowerCase();
-
-  return message.includes(keyword) || script.includes(keyword);
-}
-
-function highestId(logs) {
-  return logs.reduce((highest, log) => Math.max(highest, Number(log.id) || 0), 0);
+  const haystack = `${log.message || ""} ${log.script_path || ""}`.toLowerCase();
+  return haystack.includes(state.audioKeyword);
 }

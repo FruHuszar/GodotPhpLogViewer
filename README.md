@@ -1,237 +1,149 @@
-# Godot Centralized Log Viewer
+# Godot Log Viewer
 
-A HTTP-based real-time error log aggregator, filter, and analytics web dashboard for
-Godot game development.
+A website that mirrors your Godot console, so a real `ERROR` doesn't get lost among fifty `WARNING` lines.
+<br>Comes with error sounds.
 
-## About The Project & Motivation
-
-During development in the Godot engine, missing assets, configuration notices, and other
-minor issues often clutter the console with dozens of warnings (WARNING). As a result,
-critical, code-breaking error messages (ERROR) easily get lost in the noise.
-
-The Godot Centralized Log Viewer solves this problem: it automatically sends logs
-generated during game development to a local PHP backend, stores them in a MySQL
-database, and displays them live on a clean web interface. The web app also assists
-development with filtering, CSV export, and specific error monitoring features.
-
-## Key Features
-
-- **Live Log Collection:** The Godot game automatically sends logs using HTTP POST requests.
-- **Type-Based Filtering:** One-click filtering for ERROR, WARNING, and INFO categories.
-- **Real-time Audio Alert:** If you are expecting a specific error or a new ERROR during
-  testing, the system instantly alerts you with a sound notification when the error occurs.
-- **CSV Export:** The filtered or complete log data can be downloaded with a single click
-  in .csv format for further analysis.
-- **Search Bar:** Text-based search within message content and .gd script file paths.
-- **Quick Management:** Delete individual logs (DELETE) or clear the entire database with
-  a single click.
-
-## Technologies Used
-
-- **Game Engine:** Godot Engine (4.x - HTTPRequest node)
-- **Backend:** PHP 8.x (REST API architecture, PDO, Prepared Statements)
-- **Database:** MySQL / MariaDB (in XAMPP environment)
-- **Frontend:** Vanilla HTML5, CSS3, JavaScript (Fetch API, Web Audio / Audio API)
+> **Note:** This project is not hosted online. Use it locally with the steps below.
+> <br>Live preview (frontend only): https://fruhuszar.github.io/GodotPhpLogViewer/
 
 ---
 
-## Requirements
+## What you can do with it
 
-- PHP 8.1+ with the `pdo_mysql` extension
-- MySQL 5.7+ / MariaDB 10.4+
-- Godot 4.x
-- Any static file server for the dashboard (VS Code Live Server, `python3 -m http.server`, ...)
+- **See every console line in the browser:** your own `print()` calls, engine messages, script errors, warnings.
+- **Filter by severity:** view `ERROR`, `WARNING`, `INFO`, or all of them with one click.
+- **Play sound on error:** tick **Alert sound** to play an audio notification on incoming logs. It uses a default sound effect (the iconic FAAH), but you can replace `alert.wav` or `alert.mp3` in `frontend/audio/` for your own notification sound.
+  Type a keyword into the search bar and click **Set** to trigger alerts only for matching messages (such as `asset`).
+- **Export to CSV:** Select rows and download them in csv format, to easily copy only the important messages.
+- **Search, clean up, hide/show columns:** Search for specific messages or filepaths, toggle off any columns you don't need, delete individual rows, selected rows, or reset the whole database.
+- **Know if it is live:** the dot next to the title is blue when connected, pulsing green while logs arrive, and red when the backend can't be reached.
 
-## 1. Database
+---
 
-```bash
-mysql -u root -p < godot_log_viewer.sql
-```
+## How to use
 
-This creates the `godot_log_viewer` database and the `logs` table.
+### First time setup
 
-## 2. Backend
+1. **Download the project**  
+   Click **Code** on GitHub and select **Download ZIP**, then unzip it anywhere on your computer.
 
-Copy the example environment file and adjust it if your MySQL credentials differ:
+2. **Add the files to your Godot project**  
+   Copy `godot_root/LogManager.gd` (and `boot.gd` if you want example errors) into your Godot project folder.
 
-```bash
-cp backend/.env-example backend/.env
-```
+   In Godot:
+   - Go to **Project Settings -> Globals -> Autoload**, pick `LogManager.gd`, and click **Add**. This makes it run automatically with your game, so logging works without calling it manually.
+   - Go to **Project Settings -> Debug -> File Logging** and enable **File Logging**. This is required for Godot to capture internal engine messages.
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `DB_HOST` | `127.0.0.1` | MySQL host |
-| `DB_NAME` | `godot_log_viewer` | Database name |
-| `DB_USER` | `root` | MySQL user |
-| `DB_PASS` | *(empty)* | MySQL password |
-| `DB_CHARSET` | `utf8mb4` | Connection charset |
+3. **Make sure an SQL server is installed**  
+   If you don't have one, download an SQL server app, for example XAMPP.
 
-Start the API from the **project root** — the document root must be `backend/public`:
+4. **Run your SQL server**
 
-```bash
-php -S localhost:8000 -t backend/public
-```
+   **Linux**
 
-Check it:
+   ```bash
+   sudo systemctl start mariadb
+   ```
 
-```bash
-curl http://localhost:8000/api/logs
-# {"status":"success","data":[]}
-```
+   **Windows**  
+   Start MySQL (for example) from the XAMPP Control Panel.
 
-### Running under XAMPP instead
+5. **Open a terminal in the project root** (the folder containing `backend/` and `frontend/`) and set up the database.
 
-Drop the project into `htdocs` and point Apache at `backend/public`, or reach it through
-the sub-directory URL — the bundled `.htaccess` rewrites everything to `index.php`, and
-the router matches `/api/logs` at any depth:
+   **Linux**
 
-```
-http://localhost/godot-php-log-viewer/backend/public/api/logs
-```
+   ```bash
+   mysql -u root -p < database_empty/godot_log_viewer.sql
+   cp backend/.env-example backend/.env
+   ```
 
-If you do this, set the same URL in **both** `frontend/js/config.js` (`API_BASE_URL`) and
-`LogManager.gd` (`API_URL`).
+   **Windows (CMD)**
 
-## 3. Frontend
+   ```bash
+   copy backend\.env-example backend\.env
+   ```
 
-Serve the `frontend/` folder over HTTP (ES modules do not work from `file://`):
+6. **Start the backend**
 
-```bash
-cd frontend
-python3 -m http.server 5500
-```
+   ```bash
+   php -S localhost:8000 -t backend/public
+   ```
 
-Open <http://localhost:5500>. If your API does not run on `http://localhost:8000`,
-change `API_BASE_URL` in `frontend/js/config.js`. The poll interval lives in the same
-file.
+   Leave this terminal open.
 
-## 4. Godot
+7. **Start the dashboard**
 
-`LogManager.gd` mirrors the **entire Godot console** to the dashboard — every `print()`,
-every `WARNING`, every `ERROR`, engine messages and script errors included, not just
-calls you write yourself. It does this by tailing Godot's own log file, which is the only
-way to see engine-generated output from GDScript.
+   In a second terminal:
 
-**Step 1 — turn on file logging.** In *Project → Project Settings → Debug → File Logging*,
-enable **Enable File Logging**, or add this to `project.godot`:
+   ```bash
+   php -S localhost:5500 -t frontend
+   ```
 
-```ini
-[debug]
+   Leave this terminal open.
 
-file_logging/enable_file_logging=true
-```
+Open `http://localhost:5500` in your browser. The status dot should turn blue.
 
-**Step 2 — register the autoload.** *Project → Project Settings → Globals → Autoload*,
-path `res://LogManager.gd`, node name `LogManager`, enabled.
+---
 
-That is all. Start the game and the dashboard fills up on its own.
+### After setting up
 
-You can still log explicitly; these go to the Godot console like anything else and are
-picked up by the same pipeline:
+Steps 1 to 5 only needed to be done once. For daily development:
 
-```gdscript
-LogManager.info("Save file loaded")       # print()
-LogManager.warning("Texture missing")     # push_warning()
-LogManager.error("Null reference")        # push_error()
-```
+1. Make sure your SQL server is running.
 
-Warnings and errors carry the script and line Godot itself reports
-(`res://boot.gd:6`); plain prints have no source, so their Script Path stays empty.
+   **Linux**
 
-### How it works
+   ```bash
+   sudo systemctl start mariadb
+   ```
 
-- The log file (`user://logs/godot.log` by default) is polled every 0.2 s and only the
-  bytes added since the last read are parsed.
-- Lines are classified by Godot's own prefixes: `ERROR:`, `SCRIPT ERROR:`, `USER ERROR:`
-  → **ERROR**; `WARNING:`, `USER WARNING:` → **WARNING**; everything else → **INFO**.
-- A following `at: _ready (res://boot.gd:6)` line is folded into the entry above it as
-  its Script Path.
-- Entries are batched and POSTed as a JSON array, so a noisy startup is a couple of
-  requests rather than a hundred.
-- `LogManager`'s own console output is tagged and skipped, so a failing API cannot feed
-  itself in a loop.
-- Identical messages are sent once per run. A error repeating every frame inside
-  `_process` produces one row, not thousands. Set `SKIP_REPEATS = false` at the top of
-  the script if you want every occurrence.
-- Settings live at the top of the script: `API_URL`, `POLL_SECONDS`, `MAX_BATCH`,
-  `SKIP_REPEATS`.
+   **Windows**  
+   Start MySQL (for example) via the XAMPP Control Panel.
 
-**Note:** file logging is a debug-build feature. This is a development tool, so that is
-the intended use — an exported release build will not produce a log file to tail.
+2. Terminal 1, from the project folder:
 
-## API
+   ```bash
+   php -S localhost:8000 -t backend/public
+   ```
 
-Base URL: `http://localhost:8000/api/logs`
+3. Terminal 2, from the project folder:
 
-| Method | Path | Purpose | Success |
-| --- | --- | --- | --- |
-| `GET` | `/api/logs` | All logs, newest first | `200` |
-| `GET` | `/api/logs/{id}` | One log | `200` / `404` |
-| `POST` | `/api/logs` | Create a log | `201` |
-| `DELETE` | `/api/logs/{id}` | Delete one log | `200` / `404` |
-| `DELETE` | `/api/logs` | Delete every log | `200` |
+   ```bash
+   php -S localhost:5500 -t frontend
+   ```
 
-POST body — a single object:
+4. Open `http://localhost:5500` in your browser and press play in Godot.
 
-```json
-{
-  "log_type": "INFO",
-  "script_path": "res://boot.gd",
-  "message": "Game started"
-}
-```
+---
 
-...or an array of them, which is what `LogManager` sends:
+## Good to know
 
-```json
-[
-  { "log_type": "INFO", "script_path": "", "message": "Godot Engine v4.6.stable" },
-  { "log_type": "ERROR", "script_path": "res://boot.gd:7", "message": "Null reference" }
-]
-```
+- **Ports:** to change ports, update `API_BASE_URL` in `frontend/js/config.js` and `API_URL` in `LogManager.gd`.
+- **Repeated messages:** identical errors repeated during frame updates are sent once per run by default. Set `SKIP_REPEATS = false` at the top of `LogManager.gd` to record every occurrence.
+- **Sound throttling:** alert sounds trigger at most once every 1.5 seconds to prevent audio stacking during error floods.
+- **Export builds:** file logging is active in debug builds only. Exported release builds don't output log files.
+- **Table limits:** the dashboard loads the newest 500 rows to keep rendering responsive.
+- **Apache / XAMPP setup:** place the project into `htdocs` and access `http://localhost/godot-php-log-viewer/backend/public/api/logs`. The `.htaccess` file handles URL rewriting.
 
-A batch returns `{"status":"success","inserted":2,"rejected":[]}`. Invalid rows are
-reported in `rejected` and the valid ones are still stored.
-
-`GET /api/logs` accepts:
-
-| Param | Meaning |
-| --- | --- |
-| `limit` | Max rows, newest first (default 500, max 5000) |
-| `type` | `ERROR`, `WARNING` or `INFO`; anything else is ignored |
-| `q` | Substring match against message and script path |
-
-The table loads 500 rows so it stays fast; **Export CSV** re-queries with the current
-filter and search applied and no display cap, so the file contains every matching log,
-not just the ones on screen.
-
-`log_type` must be `ERROR`, `WARNING` or `INFO` (case-insensitive; stored uppercase).
-`message` is required, `script_path` is optional and truncated to 255 characters.
-
-Every response is JSON and has a `status` field of `success` or `error`; errors also
-carry a `message`. CORS is open (`Access-Control-Allow-Origin: *`) so the dashboard can
-live on a different port.
-
-## Dashboard features
-
-- Live polling every second, with an online/offline status dot
-- Counters per severity
-- Filter by severity, full-text search over message and script path
-- Column show/hide, per-row and bulk delete
-- CSV export (UTF-8 with BOM, so accented characters survive Excel)
-- Alert sound: tick **Alert Sound** to enable the keyword box (it is greyed out until
-  then), type a keyword such as `asset` and press **Set** or Enter. From then on any log
-  arriving with that text in its message or script path plays a tone, within about a
-  second of Godot printing it. Leave the keyword empty and it alerts on every new
-  `ERROR` instead. It never fires for rows already on screen when the page loaded.
+---
 
 ## Troubleshooting
 
-| Symptom | Cause |
-| --- | --- |
-| Dashboard shows "No logs found" and the status dot is red | The API is unreachable — check `API_BASE_URL` in `js/config.js` and that the PHP server is running |
-| `{"status":"error","message":"Could not connect to database ..."}` | MySQL is not running, or `backend/.env` is wrong |
-| Godot console shows `LogManager: ... could not reach ...` | The API is not listening on `API_URL` in `LogManager.gd` |
-| Logs are stored but not shown | Open the browser console; a CORS or 404 error there names the failing URL |
-| Status 500 and "CORS header missing" in the browser | The server died before PHP could send the headers. Run `curl -i http://localhost:8000/api/logs` to see the real error — the browser hides it. Under Apache it is usually `mod_rewrite` being off. |
-| No alert sound | Browsers block audio until you interact with the page — click anywhere first. The alert only fires for logs that arrive after the dashboard loaded. |
+| Symptom                             | Cause                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Red dot, no logs                    | The backend isn't running, or `API_BASE_URL` in `frontend/js/config.js` points to the wrong URL.                          |
+| Could not connect to database       | MySQL isn't running, or connection settings in `backend/.env` are incorrect.                                              |
+| Godot prints connection error       | Backend isn't listening on the address configured in `LogManager.gd`.                                                     |
+| Dot stays blue while game runs      | No new logs arrived in the last 8 seconds. The engine is running quietly.                                                 |
+| Logs stored but not shown           | Check the browser developer console for CORS or 404 errors.                                                               |
+| Status 500 and missing CORS headers | The server hit an error before PHP returned headers. Run `curl -i http://localhost:8000/api/logs` to see the exact error. |
+| No alert sound                      | Audio file missing in `frontend/audio/`, or the browser requires a page click before allowing audio playback.             |
+
+---
+
+## Built with
+
+- Engine: Godot 4.x
+- Backend: PHP 8.1+ (PDO with prepared statements)
+- Database: MySQL / MariaDB
+- Frontend: Vanilla HTML5, CSS3, JavaScript (ES6+, zero build step / frameworks)
