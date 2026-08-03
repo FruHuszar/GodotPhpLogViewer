@@ -1,0 +1,33 @@
+export default class Export {
+  #headers = ["ID", "Time", "Type", "Script Path", "Message"];
+
+  save(logs, filename = "godot_logs.csv") {
+    const rows = logs.map((log) =>
+      [log.id, log.created_at, log.log_type, log.script_path, log.message]
+        .map((value) => this.#field(value))
+        .join(","),
+    );
+
+    this.#download([this.#headers.join(","), ...rows].join("\n"), filename);
+  }
+
+  #field(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+
+  #download(content, filename) {
+    const url = URL.createObjectURL(
+      new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" }),
+    );
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+
+    document.body.append(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  }
+}

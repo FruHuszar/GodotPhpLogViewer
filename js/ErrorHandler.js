@@ -1,16 +1,16 @@
 export default class ErrorHandler {
-  #element;
+  #elem = null;
 
-  constructor(selector) {
-    this.#element = document.querySelector(selector);
+  constructor(elem) {
+    this.#elem = elem;
   }
 
   show(message) {
-    this.#element.textContent = message;
-    this.#element.hidden = false;
+    this.#elem.textContent = message;
+    this.#elem.hidden = false;
   }
 
   hide() {
-    this.#element.hidden = true;
+    this.#elem.hidden = true;
   }
 }

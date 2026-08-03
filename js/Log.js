@@ -1,25 +1,35 @@
-import { state, severity } from "./state.js";
-
-const ESCAPED = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-
 export default class Log {
+  static EVENTS = {
+    DELETE: "log:delete",
+  };
+
   #obj = {};
+  #columns = {};
 
-  constructor(obj = { id, created_at, log_type, script_path, message }, parentElem) {
+  constructor(obj = { id, created_at, log_type, script_path, message }, columns, szuloElem) {
     this.#obj = obj;
-    this.parentElem = parentElem;
+    this.#columns = columns;
+    this.szuloElem = szuloElem;
     this.render();
-
-    this.rowElem = this.parentElem.lastElementChild;
-    this.rowElem
-      .querySelector(".btn-delete")
-      .addEventListener("click", () => this.deleteEvent());
+    this.listenEvents();
   }
 
   render() {
-    const type = severity(this.#obj);
-    const code = `
-      <tr data-severity="${type.toLowerCase()}">
+    this.szuloElem.insertAdjacentHTML("beforeend", this.#code());
+    this.elem = this.szuloElem.lastElementChild;
+  }
+
+  listenEvents() {
+    this.elem.querySelector(".btn-delete").addEventListener("click", () => {
+      this.elem.dispatchEvent(
+        new CustomEvent(Log.EVENTS.DELETE, { detail: this.#obj.id, bubbles: true }),
+      );
+    });
+  }
+
+  #code() {
+    return `
+      <tr data-severity="${this.#obj.log_type.toLowerCase()}">
         <td>
           <input
             type="checkbox"
@@ -28,33 +38,30 @@ export default class Log {
             aria-label="Select log ${this.#obj.id}"
           />
         </td>
-        ${this.cell("id", this.#obj.id)}
-        ${this.cell("time", this.time())}
-        ${this.cell("type", `<span class="badge">${type}</span>`, false)}
-        ${this.cell("script-path", this.#obj.script_path)}
-        ${this.cell("message", this.#obj.message)}
+        ${this.#cell("id", this.#safe(this.#obj.id))}
+        ${this.#cell("time", this.#safe(this.#time()))}
+        ${this.#cell("type", `<span class="badge">${this.#obj.log_type}</span>`)}
+        ${this.#cell("script-path", this.#safe(this.#obj.script_path))}
+        ${this.#cell("message", this.#safe(this.#obj.message))}
         <td><button type="button" class="btn-delete">Delete</button></td>
       </tr>
     `;
-
-    this.parentElem.insertAdjacentHTML("beforeend", code);
   }
 
-  cell(column, content, escaped = true) {
-    const hidden = state.columns[column] ? "" : "hidden";
-    return `<td data-col="${column}" ${hidden}>${escaped ? this.escape(content) : content}</td>`;
+  #cell(column, content) {
+    return `<td data-col="${column}" ${this.#columns[column] ? "" : "hidden"}>${content}</td>`;
   }
 
-  escape(content) {
-    return String(content ?? "").replace(/[&<>"]/g, (sign) => ESCAPED[sign]);
+  #safe(content) {
+    const elem = document.createElement("div");
+    elem.textContent = content ?? "";
+
+    return elem.innerHTML;
   }
 
-  time() {
-    const date = new Date(String(this.#obj.created_at || "").replace(" ", "T"));
+  #time() {
+    const date = new Date(String(this.#obj.created_at ?? "").replace(" ", "T"));
+
     return Number.isNaN(date.getTime()) ? this.#obj.created_at : date.toLocaleString();
-  }
-
-  deleteEvent() {
-    window.dispatchEvent(new CustomEvent("logDelete", { detail: this.#obj.id }));
   }
 }
