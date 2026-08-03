@@ -1,16 +1,16 @@
-import { API_BASE_URL, MAX_ROWS } from "./config.js";
-
 export default class Service {
-  #url = API_BASE_URL;
+  #url = "";
+  #maxRows = 0;
 
-  async getLogs({ limit = MAX_ROWS, type = "ALL", search = "" } = {}) {
-    const params = new URLSearchParams({ limit: String(limit) });
+  constructor(url, maxRows) {
+    this.#url = url;
+    this.#maxRows = maxRows;
+  }
 
-    if (type !== "ALL") params.set("type", type);
-    if (search) params.set("q", search);
-
-    const payload = await this.#request(`${this.#url}?${params}`);
-    return Array.isArray(payload.data) ? payload.data : [];
+  getLogs() {
+    return this.#request(`${this.#url}?limit=${this.#maxRows}`).then((payload) =>
+      Array.isArray(payload.data) ? payload.data : [],
+    );
   }
 
   deleteLog(id) {
@@ -21,18 +21,17 @@ export default class Service {
     return this.#request(this.#url, { method: "DELETE" });
   }
 
-  async #request(url, options = {}) {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" },
-      ...options,
-    }).catch(() => {
-      throw new Error("Cannot reach the log API.");
-    });
+  #request(url, options = {}) {
+    return fetch(url, { headers: { Accept: "application/json" }, ...options })
+      .catch(() => {
+        throw new Error("Cannot reach the log API.");
+      })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`The log API answered with status ${response.status}.`);
+        }
 
-    if (!response.ok) {
-      throw new Error(`The log API answered with status ${response.status}.`);
-    }
-
-    return response.json();
+        return response.json();
+      });
   }
 }

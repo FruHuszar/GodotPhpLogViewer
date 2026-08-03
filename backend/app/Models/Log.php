@@ -1,19 +1,16 @@
-<?php 
+<?php
 
-require_once __DIR__ . '/../../config/Database.php';
-
-class Log 
+class Log
 {
     private PDO $db;
     private string $table = 'logs';
 
-    public function __construct()
+    public function __construct(PDO $db)
     {
-        $database = new Database();
-        $this->db = $database->getConnection();
+        $this->db = $db;
     }
 
-    public function getAll(int $limit = 500, string $type = '', string $search = ''): array
+    public function getAll(int $limit, string $type = '', string $search = ''): array
     {
         $conditions = [];
         $params = [];
@@ -24,10 +21,8 @@ class Log
         }
 
         if ($search !== '') {
-            $needle = '%' . addcslashes($search, '%_\\') . '%';
-            $conditions[] = '(message LIKE :search_message OR script_path LIKE :search_path)';
-            $params[':search_message'] = $needle;
-            $params[':search_path'] = $needle;
+            $conditions[] = '(message LIKE :search OR script_path LIKE :search)';
+            $params[':search'] = '%' . addcslashes($search, '%_\\') . '%';
         }
 
         $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
@@ -42,82 +37,72 @@ class Log
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll();
     }
 
     public function getById(int $id): array|false
     {
-        $sql = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
+        $sql = "SELECT * FROM {$this->table} WHERE id = :id";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch();
     }
 
-   public function create(string $logType, string $scriptPath, string $message): int|false 
+    public function create(array $entry): int
     {
-        $sql = "INSERT INTO {$this->table} (log_type, script_path, message) 
-                  VALUES (:log_type, :script_path, :message)";
-        
-        $stmt = $this->db->prepare($sql);
+        $this->insert($this->db->prepare($this->insertSql()), $entry);
 
-        $success = $stmt->execute([
-            ':log_type'    => $logType,
-            ':script_path' => $scriptPath,
-            ':message'     => $message
-        ]);
-
-        if ($success) {
-            return (int) $this->db->lastInsertId();
-        }
-
-        return false;
+        return (int) $this->db->lastInsertId();
     }
 
     public function createMany(array $entries): int
     {
-        $sql = "INSERT INTO {$this->table} (log_type, script_path, message)
-                  VALUES (:log_type, :script_path, :message)";
-
-        $stmt = $this->db->prepare($sql);
-
+        $stmt = $this->db->prepare($this->insertSql());
         $this->db->beginTransaction();
 
         try {
-            $inserted = 0;
-
             foreach ($entries as $entry) {
-                $stmt->execute([
-                    ':log_type'    => $entry['log_type'],
-                    ':script_path' => $entry['script_path'],
-                    ':message'     => $entry['message'],
-                ]);
-                $inserted++;
+                $this->insert($stmt, $entry);
             }
 
             $this->db->commit();
-
-            return $inserted;
         } catch (Throwable $exception) {
             $this->db->rollBack();
             throw $exception;
         }
+
+        return count($entries);
     }
 
-    public function deleteById(int $id): bool 
+    public function deleteById(int $id): bool
     {
         $sql = "DELETE FROM {$this->table} WHERE id = :id";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
 
         return $stmt->rowCount() > 0;
     }
 
-    public function deleteAll(): bool 
+    public function deleteAll(): bool
     {
-        $sql = "DELETE FROM {$this->table}";
-        $stmt = $this->db->prepare($sql);
+        return $this->db->prepare("DELETE FROM {$this->table}")->execute();
+    }
 
-        return $stmt->execute();
+    private function insertSql(): string
+    {
+        return "INSERT INTO {$this->table} (log_type, script_path, message)
+                VALUES (:log_type, :script_path, :message)";
+    }
+
+    private function insert(PDOStatement $stmt, array $entry): void
+    {
+        $stmt->execute([
+            ':log_type' => $entry['log_type'],
+            ':script_path' => $entry['script_path'],
+            ':message' => $entry['message'],
+        ]);
     }
 }

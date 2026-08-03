@@ -1,67 +1,83 @@
 <?php
 
-declare(strict_types=1);
-
-require_once __DIR__ . '/../app/Http/Controllers/LogController.php';
-
-function respond_with_error(int $status, string $message): void
+class LogRoutes
 {
-    http_response_code($status);
-    echo json_encode([
-        'status' => 'error',
-        'message' => $message,
-    ]);
-}
+    private LogController $controller;
+    private string $method;
+    private array $segments = [];
 
-$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    public function __construct(LogController $controller)
+    {
+        $this->controller = $controller;
+        $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $this->segments = $this->uriSegments();
+    }
 
-$uriSegments = array_values(array_filter(explode('/', trim($requestUri, '/')), static fn (string $segment): bool => $segment !== ''));
-
-$apiIndex = array_search('api', $uriSegments, true);
-
-if ($apiIndex === false || ($uriSegments[$apiIndex + 1] ?? null) !== 'logs') {
-    respond_with_error(404, 'Endpoint Not Found');
-    return;
-}
-
-$idSegment = $uriSegments[$apiIndex + 2] ?? null;
-
-if ($idSegment !== null && !ctype_digit($idSegment)) {
-    respond_with_error(404, 'Endpoint Not Found');
-    return;
-}
-
-$id = $idSegment !== null ? (int) $idSegment : null;
-
-$controller = new LogController();
-
-switch ($requestMethod) {
-    case 'GET':
-        if ($id !== null) {
-            $controller->show($id);
-        } else {
-            $controller->index();
+    public function handleRequest(): void
+    {
+        if (!$this->isLogsEndpoint()) {
+            $this->fail(404, 'Endpoint Not Found');
         }
-        break;
 
-    case 'POST':
-        if ($id === null) {
-            $controller->store();
-        } else {
-            respond_with_error(405, 'Method Not Allowed');
+        $id = $this->id();
+
+        switch ($this->method) {
+            case 'GET':
+                $id === null ? $this->controller->index() : $this->controller->show($id);
+                break;
+
+            case 'POST':
+                if ($id !== null) {
+                    $this->fail(405, 'Method Not Allowed');
+                }
+                $this->controller->store();
+                break;
+
+            case 'DELETE':
+                $id === null ? $this->controller->destroyAll() : $this->controller->destroy($id);
+                break;
+
+            default:
+                $this->fail(405, 'Method Not Allowed');
+                break;
         }
-        break;
+    }
 
-    case 'DELETE':
-        if ($id !== null) {
-            $controller->destroy($id);
-        } else {
-            $controller->destroyAll();
+    private function uriSegments(): array
+    {
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+
+        return array_values(array_filter(explode('/', trim($path, '/')), fn (string $segment): bool => $segment !== ''));
+    }
+
+    private function isLogsEndpoint(): bool
+    {
+        $apiIndex = array_search('api', $this->segments, true);
+
+        if ($apiIndex === false || ($this->segments[$apiIndex + 1] ?? null) !== 'logs') {
+            return false;
         }
-        break;
 
-    default:
-        respond_with_error(405, 'Method Not Allowed');
-        break;
+        $idSegment = $this->segments[$apiIndex + 2] ?? null;
+
+        return $idSegment === null || ctype_digit($idSegment);
+    }
+
+    private function id(): ?int
+    {
+        $apiIndex = (int) array_search('api', $this->segments, true);
+        $idSegment = $this->segments[$apiIndex + 2] ?? null;
+
+        return $idSegment === null ? null : (int) $idSegment;
+    }
+
+    private function fail(int $status, string $message): void
+    {
+        http_response_code($status);
+        echo json_encode([
+            'status' => 'error',
+            'message' => $message,
+        ]);
+        exit;
+    }
 }

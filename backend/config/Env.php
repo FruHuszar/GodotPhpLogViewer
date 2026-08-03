@@ -1,29 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 class Env
 {
-    private static bool $loaded = false;
+    private array $variables = [];
 
-    public static function load(string $path): void
+    public function load(string $filePath): void
     {
-        if (self::$loaded) {
+        if (!is_readable($filePath)) {
             return;
         }
 
-        self::$loaded = true;
-
-        if (!is_readable($path)) {
-            error_log("Env: '{$path}' is missing or unreadable, falling back to defaults.");
-            return;
-        }
-
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-        if ($lines === false) {
-            return;
-        }
+        $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -32,27 +19,18 @@ class Env
                 continue;
             }
 
-            [$name, $value] = array_map('trim', explode('=', $line, 2));
+            [$key, $value] = array_map('trim', explode('=', $line, 2));
 
-            if ($name === '') {
-                continue;
+            if ($key !== '') {
+                $this->variables[$key] = trim($value, "\"'");
             }
-
-            $value = trim($value, "\"'");
-
-            $_ENV[$name] = $value;
-            putenv("{$name}={$value}");
         }
     }
 
-    public static function get(string $key, ?string $default = null): ?string
+    public function get(string $key, string $default = ''): string
     {
-        $value = $_ENV[$key] ?? getenv($key);
+        $value = $this->variables[$key] ?? '';
 
-        if ($value === false || $value === null || $value === '') {
-            return $default;
-        }
-
-        return (string) $value;
+        return $value === '' ? $default : $value;
     }
 }

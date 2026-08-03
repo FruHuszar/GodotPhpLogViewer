@@ -1,122 +1,117 @@
 <?php
 
-declare(strict_types=1);
-
-require_once __DIR__ . '/../../Models/Log.php';
-
 class LogController
 {
-    private const ALLOWED_TYPES = ['ERROR', 'WARNING', 'INFO'];
-    private const MAX_SCRIPT_PATH_LENGTH = 255;
-    private const DEFAULT_LIMIT = 500;
-    private const MAX_LIMIT = 5000;
+    private Log $model;
 
-    private ?Log $logModel = null;
+    private array $allowedTypes = ['ERROR', 'WARNING', 'INFO'];
+    private int $maxScriptPathLength = 255;
+    private int $defaultLimit = 500;
+    private int $maxLimit = 5000;
+
+    public function __construct(Log $model)
+    {
+        $this->model = $model;
+    }
 
     public function index(): void
     {
-        $this->run(function (): void {
-            $limit = self::DEFAULT_LIMIT;
+        $logs = $this->model->getAll($this->limit(), $this->type(), $this->search());
 
-            if (isset($_GET['limit']) && ctype_digit((string) $_GET['limit'])) {
-                $limit = max(1, min(self::MAX_LIMIT, (int) $_GET['limit']));
-            }
-
-            $type = strtoupper(trim((string) ($_GET['type'] ?? '')));
-
-            if ($type !== '' && !in_array($type, self::ALLOWED_TYPES, true)) {
-                $type = '';
-            }
-
-            $search = trim((string) ($_GET['q'] ?? ''));
-
-            $logs = $this->model()->getAll($limit, $type, $search);
-
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'success',
-                'data' => $logs,
-            ]);
-        });
+        $this->jsonResponse([
+            'status' => 'success',
+            'data' => $logs,
+        ]);
     }
 
     public function show(int $id): void
     {
-        $this->run(function () use ($id): void {
-            $log = $this->model()->getById($id);
+        $log = $this->model->getById($id);
 
-            if (!$log) {
-                $this->fail(404, 'Log not found');
-                return;
-            }
+        if (!$log) {
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => 'Log not found',
+            ], 404);
+        }
 
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'success',
-                'data' => $log,
-            ]);
-        });
+        $this->jsonResponse([
+            'status' => 'success',
+            'data' => $log,
+        ]);
     }
 
     public function store(): void
     {
-        $this->run(function (): void {
-            $raw = file_get_contents('php://input');
-            $inputData = json_decode($raw !== false ? $raw : '', true);
+        $inputData = json_decode((string) file_get_contents('php://input'), true);
 
-            if (!is_array($inputData)) {
-                $this->fail(400, 'Request body must be a JSON object or an array of them');
-                return;
-            }
+        if (!is_array($inputData)) {
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => 'Request body must be a JSON object or an array of them',
+            ], 400);
+        }
 
-            if (self::isList($inputData)) {
-                $this->storeMany($inputData);
-                return;
-            }
+        if (array_is_list($inputData)) {
+            $this->storeMany($inputData);
+        }
 
-            $entry = $this->validate($inputData);
+        $entry = $this->validate($inputData);
 
-            if (is_string($entry)) {
-                $this->fail(400, $entry);
-                return;
-            }
+        if (is_string($entry)) {
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => $entry,
+            ], 400);
+        }
 
-            $newId = $this->model()->create(
-                $entry['log_type'],
-                $entry['script_path'],
-                $entry['message']
-            );
+        $newId = $this->model->create($entry);
 
-            if (!$newId) {
-                $this->fail(500, 'Failed to create log entry');
-                return;
-            }
+        $this->jsonResponse([
+            'status' => 'success',
+            'data' => $this->model->getById($newId),
+        ], 201);
+    }
 
-            http_response_code(201);
-            echo json_encode([
-                'status' => 'success',
-                'data' => $this->model()->getById($newId),
-            ]);
-        });
+    public function destroy(int $id): void
+    {
+        if (!$this->model->deleteById($id)) {
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => 'Log not found or already deleted',
+            ], 404);
+        }
+
+        $this->jsonResponse([
+            'status' => 'success',
+            'message' => 'Log deleted successfully',
+        ]);
+    }
+
+    public function destroyAll(): void
+    {
+        $this->model->deleteAll();
+
+        $this->jsonResponse([
+            'status' => 'success',
+            'message' => 'All logs deleted successfully',
+        ]);
     }
 
     private function storeMany(array $entries): void
     {
         if ($entries === []) {
-            $this->fail(400, 'The batch is empty');
-            return;
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => 'The batch is empty',
+            ], 400);
         }
 
         $valid = [];
         $rejected = [];
 
         foreach ($entries as $index => $candidate) {
-            if (!is_array($candidate)) {
-                $rejected[] = "#{$index}: not an object";
-                continue;
-            }
-
-            $entry = $this->validate($candidate);
+            $entry = is_array($candidate) ? $this->validate($candidate) : 'not an object';
 
             if (is_string($entry)) {
                 $rejected[] = "#{$index}: {$entry}";
@@ -127,18 +122,17 @@ class LogController
         }
 
         if ($valid === []) {
-            $this->fail(400, 'No valid entries in the batch: ' . implode('; ', $rejected));
-            return;
+            $this->jsonResponse([
+                'status' => 'error',
+                'message' => 'No valid entries in the batch: ' . implode('; ', $rejected),
+            ], 400);
         }
 
-        $inserted = $this->model()->createMany($valid);
-
-        http_response_code(201);
-        echo json_encode([
+        $this->jsonResponse([
             'status' => 'success',
-            'inserted' => $inserted,
+            'inserted' => $this->model->createMany($valid),
             'rejected' => $rejected,
-        ]);
+        ], 201);
     }
 
     private function validate(array $input): array|string
@@ -151,95 +145,49 @@ class LogController
             return 'Missing required fields: log_type, script_path, message';
         }
 
-        if (!in_array($logType, self::ALLOWED_TYPES, true)) {
-            return 'log_type must be one of: ' . implode(', ', self::ALLOWED_TYPES);
+        if (!in_array($logType, $this->allowedTypes, true)) {
+            return 'log_type must be one of: ' . implode(', ', $this->allowedTypes);
         }
 
         return [
             'log_type' => $logType,
-            'script_path' => self::truncate($scriptPath, self::MAX_SCRIPT_PATH_LENGTH),
+            'script_path' => $this->truncate($scriptPath),
             'message' => $message,
         ];
     }
 
-    public function destroy(int $id): void
+    private function truncate(string $value): string
     {
-        $this->run(function () use ($id): void {
-            if (!$this->model()->deleteById($id)) {
-                $this->fail(404, 'Log not found or already deleted');
-                return;
-            }
+        preg_match('/^.{0,' . $this->maxScriptPathLength . '}/us', $value, $matches);
 
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'Log deleted successfully',
-            ]);
-        });
+        return $matches[0] ?? $value;
     }
 
-    public function destroyAll(): void
+    private function limit(): int
     {
-        $this->run(function (): void {
-            $this->model()->deleteAll();
-
-            http_response_code(200);
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'All logs deleted successfully',
-            ]);
-        });
-    }
-
-    private static function isList(array $value): bool
-    {
-        if (function_exists('array_is_list')) {
-            return array_is_list($value);
+        if (!isset($_GET['limit']) || !ctype_digit((string) $_GET['limit'])) {
+            return $this->defaultLimit;
         }
 
-        return $value === [] || array_keys($value) === range(0, count($value) - 1);
+        return max(1, min($this->maxLimit, (int) $_GET['limit']));
     }
 
-    private static function truncate(string $value, int $limit): string
+    private function type(): string
     {
-        if (function_exists('mb_substr')) {
-            return mb_substr($value, 0, $limit);
-        }
+        $type = strtoupper(trim((string) ($_GET['type'] ?? '')));
 
-        $matches = [];
-
-        if (preg_match('/^.{0,' . $limit . '}/us', $value, $matches) === 1) {
-            return $matches[0];
-        }
-
-        return substr($value, 0, $limit);
+        return in_array($type, $this->allowedTypes, true) ? $type : '';
     }
 
-    private function model(): Log
+    private function search(): string
     {
-        if ($this->logModel === null) {
-            $this->logModel = new Log();
-        }
-
-        return $this->logModel;
+        return trim((string) ($_GET['q'] ?? ''));
     }
 
-    private function run(callable $action): void
+    private function jsonResponse(array $data, int $statusCode = 200): void
     {
-        try {
-            $action();
-        } catch (Throwable $exception) {
-            error_log((string) $exception);
-            $this->fail(500, $exception->getMessage());
-        }
-    }
-
-    private function fail(int $status, string $message): void
-    {
-        http_response_code($status);
-        echo json_encode([
-            'status' => 'error',
-            'message' => $message,
-        ]);
+        http_response_code($statusCode);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
     }
 }

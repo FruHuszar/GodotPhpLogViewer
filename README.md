@@ -118,7 +118,7 @@ Steps 1 to 5 only needed to be done once. For daily development:
 
 ## Good to know
 
-- **Ports:** to change ports, update `API_BASE_URL` in `frontend/js/config.js` and `API_URL` in `LogManager.gd`.
+- **Ports:** to change ports, update `API_URL` in `frontend/js/index.js` and `API_URL` in `LogManager.gd`.
 - **Repeated messages:** identical errors repeated during frame updates are sent once per run by default. Set `SKIP_REPEATS = false` at the top of `LogManager.gd` to record every occurrence.
 - **Sound throttling:** alert sounds trigger at most once every 1.5 seconds to prevent audio stacking during error floods.
 - **Export builds:** file logging is active in debug builds only. Exported release builds don't output log files.
@@ -131,7 +131,7 @@ Steps 1 to 5 only needed to be done once. For daily development:
 
 | Symptom                             | Cause                                                                                                                     |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Red dot, no logs                    | The backend isn't running, or `API_BASE_URL` in `frontend/js/config.js` points to the wrong URL.                          |
+| Red dot, no logs                    | The backend isn't running, or `API_URL` in `frontend/js/index.js` points to the wrong URL.                          |
 | Could not connect to database       | MySQL isn't running, or connection settings in `backend/.env` are incorrect.                                              |
 | Godot prints connection error       | Backend isn't listening on the address configured in `LogManager.gd`.                                                     |
 | Dot stays blue while game runs      | No new logs arrived in the last 8 seconds. The engine is running quietly.                                                 |
